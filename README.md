@@ -5,7 +5,7 @@ Public static assets for [Instatools](https://www.useinstatools.com) demo images
 ## Base URL
 
 ```text
-https://cdn.jsdelivr.net/gh/nicholasxdavis/instatools-cdn@main/src
+https://cdn.jsdelivr.net/gh/nicholasxdavis/instatools-cdn@master/src
 ```
 
 ## Paths
@@ -19,13 +19,13 @@ https://cdn.jsdelivr.net/gh/nicholasxdavis/instatools-cdn@main/src
 ## Example
 
 ```text
-https://cdn.jsdelivr.net/gh/nicholasxdavis/instatools-cdn@main/src/holder/obama.jpg
+https://cdn.jsdelivr.net/gh/nicholasxdavis/instatools-cdn@master/src/holder/obama.jpg
 ```
 
 Raw GitHub also works:
 
 ```text
-https://raw.githubusercontent.com/nicholasxdavis/instatools-cdn/main/src/holder/obama.jpg
+https://raw.githubusercontent.com/nicholasxdavis/instatools-cdn/master/src/holder/obama.jpg
 ```
 
 MIT licensed. See the main [Instatools](https://github.com/nicholasxdavis/instatools) repo.
