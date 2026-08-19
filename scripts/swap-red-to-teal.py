@@ -1,4 +1,4 @@
-"""Swap vivid red garment pixels to #14B8A6 — avoids skin/face tones."""
+"""Swap vivid red garment pixels to #14B8A6 — avoids skin, face, and chin flush."""
 from __future__ import annotations
 
 import sys
@@ -7,6 +7,7 @@ from pathlib import Path
 
 import numpy as np
 from PIL import Image
+from scipy import ndimage
 
 TARGET_HEX = "#14B8A6"
 TARGET_RGB = (0x14, 0xB8, 0xA6)
@@ -57,19 +58,39 @@ def hsv_to_rgb_array(h: np.ndarray, s: np.ndarray, v: np.ndarray) -> np.ndarray:
 
 
 def red_garment_mask(rgb: np.ndarray, sat: np.ndarray) -> np.ndarray:
-    """Target saturated red fabric only — not skin, lips, or warm highlights."""
+    """Target saturated red fabric only — not skin, lips, or chin flush."""
     r = rgb[..., 0].astype(np.float32)
     g = rgb[..., 1].astype(np.float32)
     b = rgb[..., 2].astype(np.float32)
 
-    return (
-        (r > 108)
-        & (r - g > 58)
-        & (r - b > 62)
-        & (g < r * 0.58)
-        & (b < r * 0.50)
-        & (sat > 0.43)
+    garment = (
+        (r > 110)
+        & (r - g > 62)
+        & (r - b > 65)
+        & (g < r * 0.52)
+        & (b < r * 0.44)
+        & (g < 96)
+        & (sat > 0.46)
     )
+
+    # Warm skin / chin flush — more green & blue relative to red than fabric.
+    skin_flush = (
+        (g > r * 0.47)
+        | ((r - g) < 64)
+        | ((g > 88) & (b > 70) & ((r - b) < 85))
+    )
+
+    return garment & ~skin_flush
+
+
+def remove_small_blobs(mask: np.ndarray, min_size: int = 90) -> np.ndarray:
+    labeled, n = ndimage.label(mask)
+    if n == 0:
+        return mask
+    counts = np.bincount(labeled.ravel(), minlength=n + 1)
+    drop = counts < min_size
+    drop[0] = False
+    return mask & ~drop[labeled]
 
 
 def swap_red_tones(img: Image.Image) -> tuple[Image.Image, int]:
@@ -79,7 +100,7 @@ def swap_red_tones(img: Image.Image) -> tuple[Image.Image, int]:
     alpha = arr[..., 3]
 
     hue, sat, val = rgb_to_hsv_array(rgb)
-    mask = red_garment_mask(rgb, sat)
+    mask = remove_small_blobs(red_garment_mask(rgb, sat))
     changed = int(np.sum(mask))
 
     target_h, target_s, _ = rgb_to_hsv(
