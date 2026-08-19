@@ -1,4 +1,4 @@
-"""Swap red-toned pixels in an image to #14B8A6, preserving luminance shading."""
+"""Swap vivid red garment pixels to #14B8A6 — avoids skin/face tones."""
 from __future__ import annotations
 
 import sys
@@ -21,17 +21,17 @@ def rgb_to_hsv_array(rgb: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarra
     delta = maxc - minc
 
     hue = np.zeros_like(maxc)
-    mask = delta > 1e-6
-    rmax = mask & (maxc == rf)
-    gmax = mask & (maxc == gf)
-    bmax = mask & (maxc == bf)
+    chroma = delta > 1e-6
+    rmax = chroma & (maxc == rf)
+    gmax = chroma & (maxc == gf)
+    bmax = chroma & (maxc == bf)
 
     hue[rmax] = ((gf[rmax] - bf[rmax]) / delta[rmax]) % 6.0
     hue[gmax] = (bf[gmax] - rf[gmax]) / delta[gmax] + 2.0
     hue[bmax] = (rf[bmax] - gf[bmax]) / delta[bmax] + 4.0
     hue = hue / 6.0
 
-    sat = np.where(maxc > 0, delta / maxc, 0.0)
+    sat = np.divide(delta, maxc, out=np.zeros_like(maxc), where=maxc > 0)
     val = maxc
     return hue, sat, val
 
@@ -56,10 +56,20 @@ def hsv_to_rgb_array(h: np.ndarray, s: np.ndarray, v: np.ndarray) -> np.ndarray:
     return np.clip(out * 255.0, 0, 255).astype(np.uint8)
 
 
-def red_tone_mask(hue: np.ndarray, sat: np.ndarray, val: np.ndarray) -> np.ndarray:
-    # Red / magenta hues in 0-1 scale; skip near-neutral pixels.
-    red_hue = (hue < 0.085) | (hue > 0.92)
-    return red_hue & (sat > 0.14) & (val > 0.08)
+def red_garment_mask(rgb: np.ndarray, sat: np.ndarray) -> np.ndarray:
+    """Target saturated red fabric only — not skin, lips, or warm highlights."""
+    r = rgb[..., 0].astype(np.float32)
+    g = rgb[..., 1].astype(np.float32)
+    b = rgb[..., 2].astype(np.float32)
+
+    return (
+        (r > 108)
+        & (r - g > 58)
+        & (r - b > 62)
+        & (g < r * 0.58)
+        & (b < r * 0.50)
+        & (sat > 0.43)
+    )
 
 
 def swap_red_tones(img: Image.Image) -> tuple[Image.Image, int]:
@@ -69,7 +79,7 @@ def swap_red_tones(img: Image.Image) -> tuple[Image.Image, int]:
     alpha = arr[..., 3]
 
     hue, sat, val = rgb_to_hsv_array(rgb)
-    mask = red_tone_mask(hue, sat, val)
+    mask = red_garment_mask(rgb, sat)
     changed = int(np.sum(mask))
 
     target_h, target_s, _ = rgb_to_hsv(
@@ -78,7 +88,6 @@ def swap_red_tones(img: Image.Image) -> tuple[Image.Image, int]:
         TARGET_RGB[2] / 255.0,
     )
 
-    # Keep original brightness; use target hue with blended saturation.
     new_h = np.where(mask, target_h, hue)
     new_s = np.where(mask, np.maximum(target_s * 0.55, sat * 0.92), sat)
     new_v = val
@@ -99,7 +108,7 @@ def main() -> int:
     img = Image.open(src)
     result, changed = swap_red_tones(img)
     result.save(src, "WEBP", quality=92, method=6)
-    print(f"Updated {src} ({changed} red-toned pixels remapped to {TARGET_HEX})")
+    print(f"Updated {src} ({changed} garment-red pixels remapped to {TARGET_HEX})")
     return 0
 
 
