@@ -15,6 +15,7 @@ https://cdn.jsdelivr.net/gh/nicholasxdavis/instatools-cdn@master/src
 | `/src/holder/` | Demo photos used by default layouts |
 | `/src/ui/` | Logos, icons, and related UI assets |
 | `/src/ui/templates/` | Layout preview stills |
+| `/src/textures/` | Repeating background patterns for Launch layout |
 
 ## Example
 
